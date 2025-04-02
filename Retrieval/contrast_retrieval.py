@@ -772,7 +772,7 @@ def main():
     parser.add_argument('--logger', default=True, help='Enable logging')
     parser.add_argument('--insubject', default=True, help='Train within subject')
     parser.add_argument('--encoder_type', type=str, default='Projector', help='EEG encoder model type, you can choose from these options: Projector, EEGConformer_Encoder, MetaEEG, EEGNetv4_Encoder, ShallowFBCSPNet_Encoder, NICE, ATCNet_Encoder, EEGITNet_Encoder')
-    parser.add_argument('--device', type=str, default='cuda:0', help='Device to use for training (e.g., "cuda:0" or "cpu")')
+    parser.add_argument('--device', type=str, default='cuda:1', help='Device to use for training (e.g., "cuda:1" or "cpu")')
 
     args = parser.parse_args()
 

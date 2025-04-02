@@ -522,7 +522,7 @@ def main():
     parser.add_argument('--insubject', default=False, help='Flag to indicate within-subject training')
     parser.add_argument('--encoder_type', type=str, default='ATMS', choices=['ATMS', 'EEGNetv4_Encoder', 'ATCNet_Encoder', 'EEGConformer_Encoder', 'EEGITNet_Encoder', 'ShallowFBCSPNet_Encoder'], help='Encoder type')
     parser.add_argument('--logger', default=True, help='Enable logging')
-    parser.add_argument('--gpu', type=str, default='cuda:0', help='GPU device to use')
+    parser.add_argument('--gpu', type=str, default='cuda:1', help='GPU device to use')
     parser.add_argument('--device', type=str, choices=['cpu', 'gpu'], default='gpu', help='Device to run on (cpu or gpu)')
     parser.add_argument('--joint_train', action='store_true', help='Flag to indicate joint subject training (default: False)')
     parser.add_argument('--sub', type=str, default='sub-01', help='Subject ID to use for testing (default: sub-01)')

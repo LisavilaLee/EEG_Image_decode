@@ -524,7 +524,7 @@ def main():
     parser.add_argument('--epochs', type=int, default=40, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--logger', type=bool, default=True, help='Enable WandB logging')
-    parser.add_argument('--gpu', type=str, default='cuda:0', help='GPU device to use')
+    parser.add_argument('--gpu', type=str, default='cuda:1', help='GPU device to use')
     parser.add_argument('--device', type=str, choices=['cpu', 'gpu'], default='gpu', help='Device to run on (cpu or gpu)')    
     parser.add_argument('--insubject', type=bool, default=True, help='In-subject mode or cross-subject mode')
     parser.add_argument('--encoder_type', type=str, default='ATMS', help='Encoder type')

@@ -23,7 +23,7 @@ from lavis.models.clip_models.loss import ClipLoss
 from sklearn.metrics import confusion_matrix
 from torch.utils.data import DataLoader, Dataset
 import random
-from utils import wandb_logger
+from .utils import wandb_logger
 import csv
 
 
@@ -430,7 +430,7 @@ def main():
     parser.add_argument('--logger', action='store_true', help='Enable logging')
     parser.add_argument('--insubject', action='store_true', help='Train within subject')
     parser.add_argument('--encoder_type', type=str, default='ATM_E', help='EEG encoder model type')
-    parser.add_argument('--device', type=str, default='cuda:0', help='Device to use for training (e.g., "cuda:0" or "cpu")')
+    parser.add_argument('--device', type=str, default='cuda:1', help='Device to use for training (e.g., "cuda:1" or "cpu")')
 
     args = parser.parse_args()
 

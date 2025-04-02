@@ -10,17 +10,17 @@ from PIL import Image
 import requests
 
 import os
-proxy = 'http://127.0.0.1:7890'
+proxy = 'http://127.0.0.1:7897'
 os.environ['http_proxy'] = proxy
 os.environ['https_proxy'] = proxy
 cuda_device_count = torch.cuda.device_count()
 print(cuda_device_count)
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
+device = "cuda:1" if torch.cuda.is_available() else "cpu"
 # vlmodel, preprocess = clip.load("ViT-B/32", device=device)
 model_type = 'ViT-H-14'
 import open_clip
 vlmodel, preprocess_train, feature_extractor = open_clip.create_model_and_transforms(
-    model_type, pretrained='laion2b_s32b_b79k', precision='fp32', device = device)
+    model_type, pretrained="/userhome2/liweile/EEG_Image_decode/THINGS/CLIP/open_clip_pytorch_model.bin", precision='fp32', device = device)
 
 import json
 
@@ -383,24 +383,26 @@ if __name__ == "__main__":
     # Instantiate the dataset and dataloader
     # data_path = "/home/ldy/Workspace/THINGS/EEG/osfstorage-archive"  # Replace with the path to your data
     data_path = data_path
-    train_dataset = EEGDataset(data_path, subjects = ['sub-01'], train=True)    
-    test_dataset = EEGDataset(data_path, subjects = ['sub-01'], train=False)
+
+    train_dataset = EEGDataset(data_path, subjects = ['sub-01'], train=True)
+    # test_dataset = EEGDataset(data_path, subjects = ['sub-01'], train=False)
     # train_dataset = EEGDataset(data_path, exclude_subject = 'sub-01', train=True)    
     # test_dataset = EEGDataset(data_path, exclude_subject = 'sub-01', train=False)    
     # train_dataset = EEGDataset(data_path, train=True) 
     # test_dataset = EEGDataset(data_path, train=False) 
+    # file_path = '/home/liweile/EEG_Image_decode/THINGS/Preprocessed_data_250Hz/sub-01/preprocessed_eeg_training.npy'
+
     
     
     
-    
-    # 100 Hz
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
-    
-    i = 80*1-1
-    x, label, text, text_features, img, img_features  = test_dataset[i]
-    print(f"Index {i}, Label: {label}, text: {text}")
-    Image.open(img)
+    # # 100 Hz
+    # train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+    # test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
+    #
+    # i = 80*1-1
+    # x, label, text, text_features, img, img_features  = test_dataset[i]
+    # print(f"Index {i}, Label: {label}, text: {text}")
+    # Image.open(img)
             
     
         

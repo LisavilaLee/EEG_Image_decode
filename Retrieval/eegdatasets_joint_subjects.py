@@ -14,7 +14,7 @@ import requests
 # os.environ['http_proxy'] = proxy
 # os.environ['https_proxy'] = proxy
 
-device = "cuda:0" if torch.cuda.is_available() else "cpu"
+device = "cuda:1" if torch.cuda.is_available() else "cpu"
 # vlmodel, preprocess = clip.load("ViT-B/32", device=device)
 model_type = 'ViT-H-14'
 import open_clip

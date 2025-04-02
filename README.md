@@ -89,12 +89,12 @@ If you want to quickly reproduce the results in the paper, please download the r
 We provide the script to learn the training strategy of EEG Encoder and verify it during training. Please modify your data set path and run:
 ```
 cd Retrieval/
-python ATMS_retrieval.py --logger True --gpu cuda:0  --output_dir ./outputs/contrast
+python ATMS_retrieval.py --logger True --gpu cuda:1  --output_dir ./outputs/contrast
 ```
 We also provide the script for ``joint subject training``, which aims to train all subjects jointly and test on a specific subject:
 ```
 cd Retrieval/
-python ATMS_retrieval_joint_train.py --joint_train --sub sub-01 True --logger True --gpu cuda:0  --output_dir ./outputs/contrast
+python ATMS_retrieval_joint_train.py --joint_train --sub sub-01 True --logger True --gpu cuda:1  --output_dir ./outputs/contrast
 ```
 
 Additionally, replicating the results of other methods (e.g. EEGNetV4) by run
@@ -109,7 +109,7 @@ We provide quick training and inference scripts for ``clip pipeline`` of visual 
 # Train and generate eeg features in Subject 8
 cd Generation/
 python ATMS_reconstruction.py --insubject True --subjects sub-08 --logger True \
---gpu cuda:0  --output_dir ./outputs/contrast
+--gpu cuda:1  --output_dir ./outputs/contrast
 ```
 
 ```

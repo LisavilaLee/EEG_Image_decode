@@ -53,7 +53,7 @@ image_processor = VaeImageProcessor()
 # path = "stabilityai/stable-diffusion-xl-base-1.0"
 
 # vae = AutoencoderKL.from_pretrained(path, subfolder='vae').to(device)
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 pipe = DiffusionPipeline.from_pretrained("stabilityai/stable-diffusion-xl-base-1.0", torch_dtype=torch.float, variant="fp16")
 
 
@@ -505,7 +505,7 @@ def main():
                         help='Encoder type')
     parser.add_argument('--img_encoder', type=str, default='Proj_img', help='Image encoder type')
     parser.add_argument('--logger', default=True, help='Enable logging')
-    parser.add_argument('--gpu', type=str, default='cuda:0', help='GPU device to use')
+    parser.add_argument('--gpu', type=str, default='cuda:1', help='GPU device to use')
     parser.add_argument('--device', type=str, choices=['cpu', 'gpu'], default='gpu', help='Device to run on (cpu or gpu)')
     parser.add_argument('--subjects', nargs='+', default=['sub-08'], help='List of subject IDs')
     
