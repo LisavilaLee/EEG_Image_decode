@@ -227,6 +227,9 @@ def train_model(sub, eeg_model, dataloader, optimizer, device, text_features_all
         # print("img_loss", img_loss)
         regress_loss =  mse_loss_fn(eeg_features, img_features)
         loss = (alpha * regress_loss *10 + (1 - alpha) * img_loss*10)
+
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: batch_idx:{batch_idx}, loss:{loss}.")
+
         loss.backward()
 
         optimizer.step()
@@ -247,6 +250,7 @@ def train_model(sub, eeg_model, dataloader, optimizer, device, text_features_all
         del eeg_data, eeg_features, img_features
     average_loss = total_loss / (batch_idx+1)
     accuracy = correct / total
+    print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: average_loss:{average_loss}, accuracy:{accuracy}")
     return average_loss, accuracy, torch.cat(features_list, dim=0)
 
 def evaluate_model(sub, eeg_model, dataloader, device, text_features_all, img_features_all, k, config):
@@ -371,6 +375,7 @@ def main_train_loop(sub, current_time, eeg_model, train_dataloader, test_dataloa
     
     for epoch in range(config.epochs):
         # Train the model
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Epoch 1.")
         train_loss, train_accuracy, features_tensor = train_model(sub, eeg_model, train_dataloader, optimizer, device, text_features_train_all, img_features_train_all, config=config)
         if (epoch +1) % 5 == 0:                    
             # Save the model every 5 epochs                  
@@ -517,7 +522,7 @@ def main():
     parser.add_argument('--name', type=str, default="lr=3e-4_img_pos_pro_eeg", help='Experiment name')
     parser.add_argument('--lr', type=float, default=3e-4, help='Learning rate')
     parser.add_argument('--epochs', type=int, default=40, help='Number of epochs')
-    parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
     parser.add_argument('--logger', type=bool, default=True, help='Enable WandB logging')
     parser.add_argument('--gpu', type=str, default='cuda:1', help='GPU device to use')
     parser.add_argument('--device', type=str, choices=['cpu', 'gpu'], default='gpu', help='Device to run on (cpu or gpu)')    
@@ -536,26 +541,35 @@ def main():
     current_time = datetime.datetime.now().strftime("%m-%d_%H-%M")
 
     for sub in subjects:
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Training on {sub} subject.")
         eeg_model = globals()[args.encoder_type]()
         eeg_model.to(device)
 
         optimizer = AdamW(itertools.chain(eeg_model.parameters()), lr=args.lr)
 
         if args.insubject:
+            print("One subject.")
             train_dataset = EEGDataset(args.data_path, subjects=[sub], train=True)
+            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Train_dataset done.")
             test_dataset = EEGDataset(args.data_path, subjects=[sub], train=False)
+            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Test_dataset done.")
         else:
             train_dataset = EEGDataset(args.data_path, exclude_subject=sub, subjects=subjects, train=True)
+            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Train_dataset done.")
             test_dataset = EEGDataset(args.data_path, exclude_subject=sub, subjects=subjects, train=False)
+            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Test_dataset done.")
 
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0, drop_last=True)
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Train_loader done.")
         test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=0, drop_last=True)
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Test_loader done.")
 
         text_features_train_all = train_dataset.text_features
         text_features_test_all = test_dataset.text_features
         img_features_train_all = train_dataset.img_features
         img_features_test_all = test_dataset.img_features
 
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Train Start.")
         results = main_train_loop(sub, current_time, eeg_model, train_loader, test_loader, optimizer, device, 
                                   text_features_train_all, text_features_test_all, img_features_train_all, img_features_test_all, config=args, logger=args.logger)
 

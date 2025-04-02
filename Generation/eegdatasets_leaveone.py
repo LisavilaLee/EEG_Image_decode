@@ -10,6 +10,9 @@ from PIL import Image
 import requests
 
 import os
+import datetime
+from tqdm import tqdm
+
 proxy = 'http://127.0.0.1:7897'
 os.environ['http_proxy'] = proxy
 os.environ['https_proxy'] = proxy
@@ -51,23 +54,29 @@ class EEGDataset():
         self.pictures = pictures
         self.exclude_subject = exclude_subject  
         self.val_size = val_size
+
         # assert any subjects in subject_list
         assert any(sub in self.subject_list for sub in self.subjects)
 
         self.data, self.labels, self.text, self.img = self.load_data()
         
         self.data = self.extract_eeg(self.data, time_window)
+
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: EEGDataset load & extract data done.")
         
         
         if self.classes is None and self.pictures is None:
             # Try to load the saved features if they exist
-            features_filename = os.path.join(f'{model_type}_features_train.pt') if self.train else os.path.join(f'{model_type}_features_test.pt')
+            # EEG_Image_decode/variables/ViT-H-14_features_train.pt, avoiding the long time for encoding image by ViT
+            features_filename = os.path.join('variables', f'{model_type}_features_train.pt') if self.train else os.path.join(f'{model_type}_features_test.pt')
             
             if os.path.exists(features_filename) :
+                print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Exist features file {features_filename}.")
                 saved_features = torch.load(features_filename)
                 self.text_features = saved_features['text_features']
                 self.img_features = saved_features['img_features']
             else:
+                print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Not exist features file {features_filename}.")
                 self.text_features = self.Textencoder(self.text)
                 self.img_features = self.ImageEncoder(self.img)
                 torch.save({
@@ -77,6 +86,8 @@ class EEGDataset():
         else:
             self.text_features = self.Textencoder(self.text)
             self.img_features = self.ImageEncoder(self.img)
+
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Text features and image features done.")
             
     def load_data(self):
         data_list = []
@@ -116,6 +127,7 @@ class EEGDataset():
         all_folders.sort()  
 
         if self.classes is not None and self.pictures is not None:
+            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: self.classes is not None and self.pictures is not None.")
             images = []  
             for i in range(len(self.classes)):
                 class_idx = self.classes[i]
@@ -128,6 +140,7 @@ class EEGDataset():
                     if pic_idx < len(all_images):
                         images.append(os.path.join(folder_path, all_images[pic_idx]))
         elif self.classes is not None and self.pictures is None:
+            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: self.classes is not None and self.pictures is None.")
             images = []  
             for i in range(len(self.classes)):
                 class_idx = self.classes[i]
@@ -138,6 +151,7 @@ class EEGDataset():
                     all_images.sort()
                     images.extend(os.path.join(folder_path, img) for img in all_images)
         elif self.classes is None:
+            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: self.classes is None.")
             images = []  
             for folder in all_folders:
                 folder_path = os.path.join(img_directory, folder)
@@ -205,6 +219,7 @@ class EEGDataset():
                     file_name = 'preprocessed_eeg_test.npy'
                     file_path = os.path.join(self.data_path, subject, file_name)
                     data = np.load(file_path, allow_pickle=True)
+                    print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Load subject {subject} test data done.")
                     preprocessed_eeg_data = torch.from_numpy(data['preprocessed_eeg_data']).float().detach()
                     times = torch.from_numpy(data['times']).detach()[50:]
                     ch_names = data['ch_names']  
@@ -295,23 +310,26 @@ class EEGDataset():
 
         return extracted_data
     
-    def Textencoder(self, text):   
-            
-            text_inputs = torch.cat([clip.tokenize(t) for t in text]).to(device)
-            # print("text_inputs", text_inputs)
-            
-            with torch.no_grad():
-                text_features = vlmodel.encode_text(text_inputs)
-            
-            text_features = F.normalize(text_features, dim=-1).detach()
-       
-            return text_features
-        
-    def ImageEncoder(self,images):
+    def Textencoder(self, text):
+        text_inputs = torch.cat([clip.tokenize(t) for t in text]).to(device)
+        # print("text_inputs", text_inputs)
+
+        with torch.no_grad():
+            text_features = vlmodel.encode_text(text_inputs)
+
+        text_features = F.normalize(text_features, dim=-1).detach()
+
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Text encoder done.")
+
+        return text_features
+
+    def ImageEncoder(self, images):
+        print(
+            f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Image encoder Begin. Total images number is {len(images)}.")
         batch_size = 20  
         image_features_list = []
-      
-        for i in range(0, len(images), batch_size):
+
+        for i in tqdm(range(0, len(images), batch_size), desc="Encoding images"):
             batch_images = images[i:i + batch_size]
             image_inputs = torch.stack([preprocess_train(Image.open(img).convert("RGB")) for img in batch_images]).to(device)
 
@@ -322,6 +340,8 @@ class EEGDataset():
             image_features_list.append(batch_image_features)
 
         image_features = torch.cat(image_features_list, dim=0)
+
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Image encoder done.")
         
         return image_features
     
@@ -381,7 +401,6 @@ class EEGDataset():
 
 if __name__ == "__main__":
     # Instantiate the dataset and dataloader
-    # data_path = "/home/ldy/Workspace/THINGS/EEG/osfstorage-archive"  # Replace with the path to your data
     data_path = data_path
 
     train_dataset = EEGDataset(data_path, subjects = ['sub-01'], train=True)
@@ -389,8 +408,7 @@ if __name__ == "__main__":
     # train_dataset = EEGDataset(data_path, exclude_subject = 'sub-01', train=True)    
     # test_dataset = EEGDataset(data_path, exclude_subject = 'sub-01', train=False)    
     # train_dataset = EEGDataset(data_path, train=True) 
-    # test_dataset = EEGDataset(data_path, train=False) 
-    # file_path = '/home/liweile/EEG_Image_decode/THINGS/Preprocessed_data_250Hz/sub-01/preprocessed_eeg_training.npy'
+    # test_dataset = EEGDataset(data_path, train=False)
 
     
     
