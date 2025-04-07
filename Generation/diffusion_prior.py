@@ -319,11 +319,11 @@ class Pipe:
 
                 # 5. predict noise
                 noise_pre = self.diffusion_prior(perturbed_h_embeds, timesteps, c_embeds)
-                
+
                 # 6. loss function weighted by sigma
                 loss = criterion(noise_pre, noise) # (batch_size,)
                 loss = (loss).mean()
-                            
+
                 # 7. update parameters
                 optimizer.zero_grad()
                 loss.backward()

@@ -161,17 +161,17 @@ class Proj_eeg(nn.Sequential):
             nn.LayerNorm(proj_dim),
         )
 
-class ATMS(nn.Module):    
+class ATMS(nn.Module):
     def __init__(self, num_channels=63, sequence_length=250, num_subjects=2, num_features=64, num_latents=1024, num_blocks=1):
         super(ATMS, self).__init__()
         default_config = Config()
-        self.encoder = iTransformer(default_config)   
+        self.encoder = iTransformer(default_config)
         self.subject_wise_linear = nn.ModuleList([nn.Linear(default_config.d_model, sequence_length) for _ in range(num_subjects)])
         self.enc_eeg = Enc_eeg()
-        self.proj_eeg = Proj_eeg()        
+        self.proj_eeg = Proj_eeg()
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
-        self.loss_func = ClipLoss()       
-         
+        self.loss_func = ClipLoss()
+
     def forward(self, x, subject_ids):
         x = self.encoder(x, None, subject_ids)
         # print(f'After attention shape: {x.shape}')
@@ -179,9 +179,9 @@ class ATMS(nn.Module):
         # x = self.subject_wise_linear[0](x)
         # print(f'After subject-specific linear transformation shape: {x.shape}')
         eeg_embedding = self.enc_eeg(x)
-        
+
         out = self.proj_eeg(eeg_embedding)
-        return out  
+        return out
 
 def extract_id_from_string(s):
     match = re.search(r'\d+$', s)
@@ -228,8 +228,6 @@ def train_model(sub, eeg_model, dataloader, optimizer, device, text_features_all
         regress_loss =  mse_loss_fn(eeg_features, img_features)
         loss = (alpha * regress_loss *10 + (1 - alpha) * img_loss*10)
 
-        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: batch_idx:{batch_idx}, loss:{loss}.")
-
         loss.backward()
 
         optimizer.step()
@@ -250,7 +248,6 @@ def train_model(sub, eeg_model, dataloader, optimizer, device, text_features_all
         del eeg_data, eeg_features, img_features
     average_loss = total_loss / (batch_idx+1)
     accuracy = correct / total
-    print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: average_loss:{average_loss}, accuracy:{accuracy}")
     return average_loss, accuracy, torch.cat(features_list, dim=0)
 
 def evaluate_model(sub, eeg_model, dataloader, device, text_features_all, img_features_all, k, config):
@@ -375,7 +372,7 @@ def main_train_loop(sub, current_time, eeg_model, train_dataloader, test_dataloa
     
     for epoch in range(config.epochs):
         # Train the model
-        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Epoch 1.")
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Epoch {epoch+1} Train Begin.")
         train_loss, train_accuracy, features_tensor = train_model(sub, eeg_model, train_dataloader, optimizer, device, text_features_train_all, img_features_train_all, config=config)
         if (epoch +1) % 5 == 0:                    
             # Save the model every 5 epochs                  
@@ -449,8 +446,8 @@ def main_train_loop(sub, current_time, eeg_model, train_dataloader, test_dataloa
             "Epoch": epoch
         })
 
-        print(f"Epoch {epoch + 1}/{config.epochs} - Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}, Top5 Accuracy: {top5_acc:.4f}")
-        print(f"Epoch {epoch + 1}/{config.epochs} - v2 Accuracy:{v2_acc} - v4 Accuracy:{v4_acc} - v10 Accuracy:{v10_acc} - v50 Accuracy:{v50_acc} - v100 Accuracy:{v100_acc}")
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Epoch {epoch + 1}/{config.epochs} - Train Loss: {train_loss:.4f}, Train Accuracy: {train_accuracy:.4f}, Test Loss: {test_loss:.4f}, Test Accuracy: {test_accuracy:.4f}, Top5 Accuracy: {top5_acc:.4f}")
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Epoch {epoch + 1}/{config.epochs} - v2 Accuracy:{v2_acc} - v4 Accuracy:{v4_acc} - v10 Accuracy:{v10_acc} - v50 Accuracy:{v50_acc} - v100 Accuracy:{v100_acc}")
   
     # # Load best model weights
     # model.load_state_dict(best_model_weights)

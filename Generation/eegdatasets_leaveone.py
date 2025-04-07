@@ -68,11 +68,11 @@ class EEGDataset():
         if self.classes is None and self.pictures is None:
             # Try to load the saved features if they exist
             # EEG_Image_decode/variables/ViT-H-14_features_train.pt, avoiding the long time for encoding image by ViT
-            features_filename = os.path.join('variables', f'{model_type}_features_train.pt') if self.train else os.path.join(f'{model_type}_features_test.pt')
+            features_filename = os.path.join('variables', f'{model_type}_features_train.pt') if self.train else os.path.join('variables', f'{model_type}_features_test.pt')
             
             if os.path.exists(features_filename) :
                 print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Exist features file {features_filename}.")
-                saved_features = torch.load(features_filename)
+                saved_features = torch.load(features_filename, weights_only=True)
                 self.text_features = saved_features['text_features']
                 self.img_features = saved_features['img_features']
             else:
@@ -404,7 +404,7 @@ if __name__ == "__main__":
     data_path = data_path
 
     train_dataset = EEGDataset(data_path, subjects = ['sub-01'], train=True)
-    # test_dataset = EEGDataset(data_path, subjects = ['sub-01'], train=False)
+    test_dataset = EEGDataset(data_path, subjects = ['sub-01'], train=False)
     # train_dataset = EEGDataset(data_path, exclude_subject = 'sub-01', train=True)    
     # test_dataset = EEGDataset(data_path, exclude_subject = 'sub-01', train=False)    
     # train_dataset = EEGDataset(data_path, train=True) 
