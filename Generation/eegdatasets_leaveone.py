@@ -42,6 +42,7 @@ class EEGDataset():
     """
     subjects = ['sub-01', 'sub-02', 'sub-05', 'sub-04', 'sub-03', 'sub-06', 'sub-07', 'sub-08', 'sub-09', 'sub-10']
     """
+    # test sth
     def __init__(self, data_path, exclude_subject=None, subjects=None, train=True, time_window=[0, 1.0], classes = None, pictures = None, val_size=None):
         self.data_path = data_path
         self.train = train
