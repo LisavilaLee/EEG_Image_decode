@@ -30,9 +30,9 @@ from torch import Tensor
 import itertools
 import math
 
-from layers.Transformer_EncDec import Encoder, EncoderLayer
-from layers.SelfAttention_Family import FullAttention, AttentionLayer
-from layers.Embed import DataEmbedding_inverted
+from subject_layers.Transformer_EncDec import Encoder, EncoderLayer
+from subject_layers.SelfAttention_Family import FullAttention, AttentionLayer
+from subject_layers.Embed import DataEmbedding_inverted
 import numpy as np
 
 from diffusers.utils import load_image
@@ -516,7 +516,7 @@ def main():
         device = torch.device(args.gpu)
     else:
         device = torch.device('cpu')
-    
+
     data_path = args.data_path
     subjects = args.subjects
     current_time = datetime.datetime.now().strftime("%m-%d_%H-%M")
