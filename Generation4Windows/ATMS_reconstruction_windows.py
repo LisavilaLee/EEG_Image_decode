@@ -19,25 +19,25 @@ import numpy as np
 import torch.nn as nn
 import torchvision.transforms as transforms
 import tqdm
-from eegdatasets_leaveone import EEGDataset
+from Generation4Windows.eegdatasets_leaveone_windows import EEGDataset
 
 from einops.layers.torch import Rearrange, Reduce
 
 from sklearn.metrics import confusion_matrix
 from torch.utils.data import DataLoader, Dataset
 import random
-from util import wandb_logger
+from Generation.util import wandb_logger
 from braindecode.models import EEGNetv4, ATCNet, EEGConformer, EEGITNet, ShallowFBCSPNet
 import csv
 from torch import Tensor
 import itertools
 import math
 import re
-from subject_layers.Transformer_EncDec import Encoder, EncoderLayer
-from subject_layers.SelfAttention_Family import FullAttention, AttentionLayer
-from subject_layers.Embed import DataEmbedding
+from Generation.subject_layers.Transformer_EncDec import Encoder, EncoderLayer
+from Generation.subject_layers.SelfAttention_Family import FullAttention, AttentionLayer
+from Generation.subject_layers.Embed import DataEmbedding
 import numpy as np
-from loss import ClipLoss
+from Generation.loss import ClipLoss
 import argparse
 from torch import nn
 from torch.optim import AdamW
@@ -512,16 +512,16 @@ import datetime
 def main():
     # Use argparse to parse the command-line arguments
     parser = argparse.ArgumentParser(description='EEG Transformer Training Script')
-    parser.add_argument('--data_path', type=str, default="/userhome2/liweile/EEG_Image_decode/THINGS/Preprocessed_data_250Hz", help='Path to the EEG dataset')
+    parser.add_argument('--data_path', type=str, default=r"E:\BCI\codes\EEG_Image_decode\THINGS\Preprocessed_data_250Hz", help='Path to the EEG dataset')
     parser.add_argument('--output_dir', type=str, default='./outputs/contrast', help='Directory to save output results')    
     parser.add_argument('--project', type=str, default="train_pos_img_text_rep", help='WandB project name')
     parser.add_argument('--entity', type=str, default="sustech_rethinkingbci", help='WandB entity name')
     parser.add_argument('--name', type=str, default="lr=3e-4_img_pos_pro_eeg", help='Experiment name')
     parser.add_argument('--lr', type=float, default=3e-4, help='Learning rate')
     parser.add_argument('--epochs', type=int, default=40, help='Number of epochs')
-    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=1, help='Batch size')
     parser.add_argument('--logger', type=bool, default=True, help='Enable WandB logging')
-    parser.add_argument('--gpu', type=str, default='cuda:1', help='GPU device to use')
+    parser.add_argument('--gpu', type=str, default='cuda:0', help='GPU device to use')
     parser.add_argument('--device', type=str, choices=['cpu', 'gpu'], default='gpu', help='Device to run on (cpu or gpu)')    
     parser.add_argument('--insubject', type=bool, default=True, help='In-subject mode or cross-subject mode')
     parser.add_argument('--encoder_type', type=str, default='ATMS', help='Encoder type')
