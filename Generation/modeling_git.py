@@ -244,6 +244,16 @@ class GitSelfAttention(nn.Module):
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
         if attention_mask is not None:
             # Apply the attention mask is (precomputed for all layers in GitModel forward() function)
+            # print(f"attention scores shape: {attention_scores.shape}")
+            # print(f"attention mask shape: {attention_mask.shape}")
+            # attention mask shape in dim 3
+            if attention_mask.shape[3] != attention_scores.shape[3]:
+                # print(f"attention mask shape: {attention_mask.shape}")
+                # for idx in range(attention_mask.shape[3]):
+                #     print(attention_mask[0, 0, 256, idx])
+                # 打印出来attention_mask的dim 3 要么为0要么为-inf，最后dim 3 最后一列全为0
+                zeros = torch.zeros([1, 1, 257, 1], device='cuda:1')
+                attention_mask = torch.cat([attention_mask, zeros], dim=-1)
             attention_scores = attention_scores + attention_mask
 
         # Normalize the attention scores to probabilities.
@@ -1940,7 +1950,7 @@ class GitModelClipEmb(GitPreTrainedModel):
         >>> outputs = model(**inputs)
         >>> last_hidden_state = outputs.last_hidden_state
         ```"""
-
+        # print(f"GitModelClipEmb's attention_mask: {attention_mask}")
         output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
         output_hidden_states = (
             output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
@@ -2021,13 +2031,21 @@ class GitModelClipEmb(GitPreTrainedModel):
         if attention_mask is not None:
             # if the user provides an attention mask, we add it to the default one
             # [bsz, seq_len] -> [bsz, 1, tgt_seq_len, src_seq_len]
+            # print(f"attention mask shape: {attention_mask.shape}")
+            # print(f"attention_mask: {attention_mask}")
+            # print(f"embedding output shape: {embedding_output.shape}")
+            # print(f"tgt_len: {input_shape[-1]}")
+            if attention_mask.shape[1] > 1:
+                # print(f"modify attention_mask in GitModelClipEmb from [[1, 1]] to [[1]].")
+                attention_mask = torch.tensor([[1]], device='cuda:1')
             expanded_attn_mask = _expand_mask(attention_mask, embedding_output.dtype, tgt_len=input_shape[-1]).to(
                 embedding_output.device
             )
             if past_key_values_length > 0:
                 expanded_attn_mask = expanded_attn_mask[:, :, -past_key_values_length:, :]
             else:
-                print(f"combined_attention_mask: {combined_attention_mask}")
+                # print(f"combined_attention_mask.shape: {combined_attention_mask.shape}")
+                # print(f"expanded_attn_mask.shape: {expanded_attn_mask.shape}")
                 combined_attention_mask[:, :, -input_shape[1] :, -input_shape[1] :] += expanded_attn_mask
 
         encoder_outputs = self.encoder(
