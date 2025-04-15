@@ -514,8 +514,8 @@ def main():
     parser = argparse.ArgumentParser(description='EEG Transformer Training Script')
     parser.add_argument('--data_path', type=str, default="/userhome2/liweile/EEG_Image_decode/THINGS/Preprocessed_data_250Hz", help='Path to the EEG dataset')
     parser.add_argument('--output_dir', type=str, default='./outputs/contrast', help='Directory to save output results')    
-    parser.add_argument('--project', type=str, default="train_pos_img_text_rep", help='WandB project name')
-    parser.add_argument('--entity', type=str, default="sustech_rethinkingbci", help='WandB entity name')
+    parser.add_argument('--project', type=str, default="EEG_Image_decode", help='WandB project name')
+    parser.add_argument('--entity', type=str, default="lisavila-shanghaitech-university", help='WandB entity name')
     parser.add_argument('--name', type=str, default="lr=3e-4_img_pos_pro_eeg", help='Experiment name')
     parser.add_argument('--lr', type=float, default=3e-4, help='Learning rate')
     parser.add_argument('--epochs', type=int, default=40, help='Number of epochs')
@@ -561,33 +561,33 @@ def main():
         test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=0, drop_last=True)
         print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Test_loader done.")
 
-        for batch_idx, (eeg_data, labels, text, text_features, img, img_features) in enumerate(train_loader):
-            print(f"batch_idx: {batch_idx}")
-            print(f"type of eeg_data: {type(eeg_data)}")
-        # text_features_train_all = train_dataset.text_features
-        # text_features_test_all = test_dataset.text_features
-        # img_features_train_all = train_dataset.img_features
-        # img_features_test_all = test_dataset.img_features
-        #
-        # print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Train Start.")
-        # results = main_train_loop(sub, current_time, eeg_model, train_loader, test_loader, optimizer, device,
-        #                           text_features_train_all, text_features_test_all, img_features_train_all, img_features_test_all, config=args, logger=args.logger)
-        #
-        #
-        # # Save results to a CSV file
-        # results_dir = os.path.join(args.output_dir, args.encoder_type, sub, current_time)
-        # os.makedirs(results_dir, exist_ok=True)
-        #
-        # if args.insubject:
-        #     results_file = f"{results_dir}/{args.encoder_type}_{sub}.csv"
-        # else:
-        #     results_file = f"{results_dir}/{args.encoder_type}_cross_exclude_{sub}.csv"
-        #
-        # with open(results_file, 'w', newline='') as file:
-        #     writer = csv.DictWriter(file, fieldnames=results[0].keys())
-        #     writer.writeheader()
-        #     writer.writerows(results)
-        #     print(f'Results saved to {results_file}')
+        # for batch in train_loader:
+        #     print(batch)
+        #     break  # 只看第一个 batch
+        text_features_train_all = train_dataset.text_features
+        text_features_test_all = test_dataset.text_features
+        img_features_train_all = train_dataset.img_features
+        img_features_test_all = test_dataset.img_features
+
+        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Train Start.")
+        results = main_train_loop(sub, current_time, eeg_model, train_loader, test_loader, optimizer, device,
+                                  text_features_train_all, text_features_test_all, img_features_train_all, img_features_test_all, config=args, logger=args.logger)
+
+
+        # Save results to a CSV file
+        results_dir = os.path.join(args.output_dir, args.encoder_type, sub, current_time)
+        os.makedirs(results_dir, exist_ok=True)
+
+        if args.insubject:
+            results_file = f"{results_dir}/{args.encoder_type}_{sub}.csv"
+        else:
+            results_file = f"{results_dir}/{args.encoder_type}_cross_exclude_{sub}.csv"
+
+        with open(results_file, 'w', newline='') as file:
+            writer = csv.DictWriter(file, fieldnames=results[0].keys())
+            writer.writeheader()
+            writer.writerows(results)
+            print(f'Results saved to {results_file}')
 
                 
 if __name__ == '__main__':
