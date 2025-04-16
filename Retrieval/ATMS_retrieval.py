@@ -55,7 +55,7 @@ class Config:
         self.e_layers = 1                  # Number of encoder layers
         self.d_ff = 256                    # Feedforward network dimension
         self.activation = 'gelu'           # Activation function
-        self.enc_in = 63                   # Encoder input dimension (example value)
+        self.c_eeg = 63                   # Encoder input dimension (example value)
         
 class iTransformer(nn.Module):
     def __init__(self, configs, joint_train=False,  num_subjects=10):

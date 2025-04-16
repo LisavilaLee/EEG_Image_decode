@@ -5,9 +5,9 @@ from torch.nn.utils import weight_norm
 import math
 
 
-class PositionalEmbedding(nn.Module):
+class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=5000):
-        super(PositionalEmbedding, self).__init__()
+        super(PositionalEncoding, self).__init__()
         # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model).float()
         pe.require_grad = False
@@ -106,18 +106,23 @@ class TimeFeatureEmbedding(nn.Module):
         return self.embed(x)
 
 
+# 将受试者的id编号也进行embedding
+# shared_embedding 服务于跨被试(划分一个sub为test)，但是实践并未成功。因此论文是对每个被试进行静态解码。
 class SubjectEmbedding(nn.Module):
     def __init__(self, num_subjects, d_model):
         super(SubjectEmbedding, self).__init__()
         self.subject_embedding = nn.Embedding(num_subjects, d_model)
         self.shared_embedding = nn.Parameter(torch.randn(1, d_model))  # Shared token for unknown subjects
         self.mask_embedding = nn.Parameter(torch.randn(1, d_model))  # Mask token embedding
+        self.num_subjects = num_subjects
 
     def forward(self, subject_ids):
         if subject_ids[0] is None or torch.any(subject_ids >= self.subject_embedding.num_embeddings):
+            # 如果没有受试者或者有未知受试者(即编号超过了[0, num_subjects-1])，将使用共享的id embedding
             batch_size = subject_ids.size(0)
             return self.shared_embedding.expand(batch_size, 1, -1)
         else:
+            # 若有受试者明确编号，那就embedding为(batch_size, 1, d_model=250)
             return self.subject_embedding(subject_ids).unsqueeze(1)
 
         
@@ -125,7 +130,7 @@ class SubjectEmbedding(nn.Module):
 #     def __init__(self, c_in, d_model, embed_type='fixed', freq='h', dropout=0.1, num_subjects=None):
 #         super(DataEmbedding, self).__init__()
 #         self.value_embedding = nn.Linear(c_in, d_model)
-#         self.position_embedding = PositionalEmbedding(d_model=d_model)
+#         self.position_embedding = PositionalEncoding(d_model=d_model)
 #         self.temporal_embedding = TemporalEmbedding(d_model=d_model, embed_type=embed_type, freq=freq) if embed_type != 'timeF' else TimeFeatureEmbedding(d_model=d_model, embed_type=embed_type, freq=freq)
 #         self.dropout = nn.Dropout(p=dropout)
 #         self.subject_embedding = SubjectEmbedding(num_subjects, d_model) if num_subjects is not None else None
@@ -142,7 +147,7 @@ class SubjectEmbedding(nn.Module):
 
 #         if self.subject_embedding is not None:
 #             subject_emb = self.subject_embedding(subject_ids)  # (batch_size, 1, d_model)
-#             x = torch.cat([subject_emb, x], dim=1)  # 在序列维度上拼接 (batch_size, seq_len + 1, d_model)
+#             x = torch.cat([subject_emb, x], dim=1)  # 在序列维度上拼接 (batch_size, c_eeg + 1, d_model)
 
 #         return self.dropout(x)
 
@@ -156,31 +161,40 @@ class DataEmbedding(nn.Module):
         else:
             self.value_embedding = nn.Linear(c_in, d_model)  # 如果没有指定subjects，则使用单一的value embedding
 
-        self.position_embedding = PositionalEmbedding(d_model=d_model)
+        self.position_embedding = PositionalEncoding(d_model=d_model)
         self.temporal_embedding = TemporalEmbedding(d_model=d_model, embed_type=embed_type, freq=freq) if embed_type != 'timeF' else TimeFeatureEmbedding(d_model=d_model, embed_type=embed_type, freq=freq)
         self.dropout = nn.Dropout(p=dropout)
         self.subject_embedding = SubjectEmbedding(num_subjects, d_model) if num_subjects is not None else None
         self.mask_token = nn.Parameter(torch.randn(1, d_model))  # Mask token embedding
         self.joint_train = joint_train
+
+        self.print_bool = False
         
     def forward(self, x, x_mark, subject_ids=None, mask=None):
+        # 默认x_mark None, subject_ids not None, mask None
+        # x [batch_size, c_eeg, c_in=250]
         if self.joint_train:
             # 使用针对每个subject的特定value embedding
             x = torch.stack([self.value_embedding[str(subject_id.item())](x[i]) for i, subject_id in enumerate(subject_ids)])
         else:
-            x = self.value_embedding(x)
+            x = self.value_embedding(x)     # x [batch_size, c_eeg, d_model=250]
 
-        if x_mark is not None:
-            x = x + self.temporal_embedding(x_mark) + self.position_embedding(x)
-
-        if mask is not None:
-            x = x * (~mask.bool()) + self.mask_token * mask.float()
+        # if x_mark is not None:
+        #     x = x + self.temporal_embedding(x_mark) + self.position_embedding(x)
+        #
+        # if mask is not None:
+        #     x = x * (~mask.bool()) + self.mask_token * mask.float()
 
         if self.subject_embedding is not None:
             subject_emb = self.subject_embedding(subject_ids)  # (batch_size, 1, d_model)
-            x = torch.cat([subject_emb, x], dim=1)  # 在序列维度上拼接 (batch_size, seq_len + 1, d_model)
+            x = torch.cat([subject_emb, x], dim=1)  # 在序列维度上拼接 (batch_size, c_eeg + 1, d_model)
+            if not self.print_bool:
+                print(f"embed x.shape:{x.shape}")
+                self.print_bool = True
 
-        return self.dropout(x)
+        x = self.dropout(x)
+
+        return x
 
 
 
@@ -207,7 +221,7 @@ class DataEmbedding_wo_pos(nn.Module):
         super(DataEmbedding_wo_pos, self).__init__()
 
         self.value_embedding = TokenEmbedding(c_in=c_in, d_model=d_model)
-        self.position_embedding = PositionalEmbedding(d_model=d_model)
+        self.position_embedding = PositionalEncoding(d_model=d_model)
         self.temporal_embedding = TemporalEmbedding(d_model=d_model, embed_type=embed_type,
                                                     freq=freq) if embed_type != 'timeF' else TimeFeatureEmbedding(
             d_model=d_model, embed_type=embed_type, freq=freq)
@@ -233,7 +247,7 @@ class PatchEmbedding(nn.Module):
         self.value_embedding = nn.Linear(patch_len, d_model, bias=False)
 
         # Positional embedding
-        self.position_embedding = PositionalEmbedding(d_model)
+        self.position_embedding = PositionalEncoding(d_model)
 
         # Residual dropout
         self.dropout = nn.Dropout(dropout)

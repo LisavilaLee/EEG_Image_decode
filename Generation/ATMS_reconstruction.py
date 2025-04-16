@@ -57,7 +57,7 @@ class Config:
         self.e_layers = 1                  # Number of encoder layers
         self.d_ff = 256                    # Dimension of the feedforward network
         self.activation = 'gelu'           # Activation function
-        self.enc_in = 63                   # Encoder input dimension (example value)
+        self.c_eeg = 63                   # Encoder input dimension (example value)
 
 class iTransformer(nn.Module):
     def __init__(self, configs, joint_train=False,  num_subjects=10):
@@ -67,6 +67,8 @@ class iTransformer(nn.Module):
         self.pred_len = configs.pred_len
         self.output_attention = configs.output_attention
         # Embedding
+        # 对于Generation模块，DataEmbedding主要是各个sub(训练分开)的eeg data以及subject_id进行embedding，输出为[batch_size, c_eeg+1, d_model]。
+        # 跨被试（即划分一个sub为test）并未成功。
         self.enc_embedding = DataEmbedding(configs.seq_len, configs.d_model, configs.embed, configs.freq, configs.dropout, joint_train=False, num_subjects=num_subjects)
         # Encoder
         self.encoder = Encoder(
@@ -74,22 +76,29 @@ class iTransformer(nn.Module):
                 EncoderLayer(
                     AttentionLayer(
                         FullAttention(False, configs.factor, attention_dropout=configs.dropout, output_attention=configs.output_attention),
-                        configs.d_model, configs.n_heads
+                        configs.d_model,
+                        configs.n_heads
                     ),
                     configs.d_model,
                     configs.d_ff,
                     dropout=configs.dropout,
                     activation=configs.activation
-                ) for l in range(configs.e_layers)
+                ) for l in range(configs.e_layers)      # only one EncoderLayer
             ],
             norm_layer=torch.nn.LayerNorm(configs.d_model)
         )
+        self.print_flag = False
 
     def forward(self, x_enc, x_mark_enc, subject_ids=None):
         # Embedding
-        enc_out = self.enc_embedding(x_enc, x_mark_enc, subject_ids)
-        enc_out, attns = self.encoder(enc_out, attn_mask=None)
-        enc_out = enc_out[:, :63, :]      
+        # default x_mark_enc None, subject_ids not None
+        # ??所以在论文实践中，将sub_id embedded是无用功？因为每个都是单独受试进行编码解码。
+        enc_out = self.enc_embedding(x_enc, x_mark_enc, subject_ids)    # enc_out shape: [batch_size, c_eeg+1, d_model]
+        enc_out, _ = self.encoder(enc_out, attn_mask=None)      # enc_out shape: [128, 64, 250]
+        enc_out = enc_out[:, :63, :]        # enc_out shape: [128, c_eeg=63, 250] 去掉sub_id emb
+        # if not self.print_flag:
+        #     print(f"iTransformer enc_out shape: {enc_out.shape}")
+        #     self.print_flag = True
         # print("enc_out", enc_out.shape)
         return enc_out
 
@@ -211,7 +220,7 @@ def train_model(sub, eeg_model, dataloader, optimizer, device, text_features_all
         batch_size = eeg_data.size(0)  # Assume the first element is the data tensor
         subject_id = extract_id_from_string(sub)
         # eeg_data = eeg_data.permute(0, 2, 1)
-        subject_ids = torch.full((batch_size,), subject_id, dtype=torch.long).to(device)
+        subject_ids = torch.full((batch_size,), subject_id, dtype=torch.long).to(device)    # subject_ids (128)
         # if not config.insubject:
         #     subject_ids = torch.full((batch_size,), -1, dtype=torch.long).to(device)     
         eeg_features = eeg_model(eeg_data, subject_ids).float()
@@ -519,7 +528,7 @@ def main():
     parser.add_argument('--name', type=str, default="lr=3e-4_img_pos_pro_eeg", help='Experiment name')
     parser.add_argument('--lr', type=float, default=3e-4, help='Learning rate')
     parser.add_argument('--epochs', type=int, default=40, help='Number of epochs')
-    parser.add_argument('--batch_size', type=int, default=64, help='Batch size')
+    parser.add_argument('--batch_size', type=int, default=128, help='Batch size')
     parser.add_argument('--logger', type=bool, default=True, help='Enable WandB logging')
     parser.add_argument('--gpu', type=str, default='cuda:1', help='GPU device to use')
     parser.add_argument('--device', type=str, choices=['cpu', 'gpu'], default='gpu', help='Device to run on (cpu or gpu)')    
@@ -547,23 +556,15 @@ def main():
         if args.insubject:
             print("One subject.")
             train_dataset = EEGDataset(args.data_path, subjects=[sub], train=True)
-            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Train_dataset done.")
             test_dataset = EEGDataset(args.data_path, subjects=[sub], train=False)
-            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Test_dataset done.")
         else:
             train_dataset = EEGDataset(args.data_path, exclude_subject=sub, subjects=subjects, train=True)
-            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Train_dataset done.")
             test_dataset = EEGDataset(args.data_path, exclude_subject=sub, subjects=subjects, train=False)
-            print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Test_dataset done.")
 
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=0, drop_last=True)
-        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Train_loader done.")
         test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True, num_workers=0, drop_last=True)
-        print(f"{[datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')]}: Test_loader done.")
 
-        # for batch in train_loader:
-        #     print(batch)
-        #     break  # 只看第一个 batch
+
         text_features_train_all = train_dataset.text_features
         text_features_test_all = test_dataset.text_features
         img_features_train_all = train_dataset.img_features

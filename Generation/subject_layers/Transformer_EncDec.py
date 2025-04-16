@@ -45,13 +45,16 @@ class EncoderLayer(nn.Module):
         x = x + self.dropout(new_x)
 
         y = x = self.norm1(x)
+        # x.shape [batch_size, c_eeg+1=63+1, d_model=250]
         y = self.dropout(self.activation(self.conv1(y.transpose(-1, 1))))
         y = self.dropout(self.conv2(y).transpose(-1, 1))
 
         return self.norm2(x + y), attn
 
 
+# EEG_Image_decode 中，Encoder负责完成所有EncoderLayer，最后进行层归一化，并只返回特征向量
 class Encoder(nn.Module):
+    # attn_layers = EncoderLayer, conv_layers=None, norm_layer=torch.nn.LayerNorm(configs.d_model)
     def __init__(self, attn_layers, conv_layers=None, norm_layer=None):
         super(Encoder, self).__init__()
         self.attn_layers = nn.ModuleList(attn_layers)
