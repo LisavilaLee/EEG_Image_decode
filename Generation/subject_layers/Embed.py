@@ -188,9 +188,9 @@ class DataEmbedding(nn.Module):
         if self.subject_embedding is not None:
             subject_emb = self.subject_embedding(subject_ids)  # (batch_size, 1, d_model)
             x = torch.cat([subject_emb, x], dim=1)  # 在序列维度上拼接 (batch_size, c_eeg + 1, d_model)
-            if not self.print_bool:
-                print(f"embed x.shape:{x.shape}")
-                self.print_bool = True
+            # if not self.print_bool:
+            #     print(f"embed x.shape:{x.shape}")
+            #     self.print_bool = True
 
         x = self.dropout(x)
 

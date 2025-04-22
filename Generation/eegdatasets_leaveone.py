@@ -237,7 +237,7 @@ class EEGDataset():
                     continue
 
         if self.train:
-            # data_list: list[1654, tensor([10, 4, 63, 250])]
+            # data_list: list[1654->tensor([10, 4, 63, 250])]
             # -1：自动推导出第一个维度（这里就是 16540 × 4 = 66160）；
             # *data_list[0].shape[2:] → 即 (63, 250)：表示只保留 通道数和时间点数；
             data_tensor = torch.cat(data_list, dim=0).view(-1, *data_list[0].shape[2:])     # [1654x4x10=66160, 63, 250]

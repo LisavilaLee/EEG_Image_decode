@@ -106,11 +106,14 @@ class PatchEmbedding(nn.Module):
     def __init__(self, emb_size=40):
         super().__init__()
         # Revised from ShallowNet
+        # 分别从c_eeg wise和d_model wise进行卷积
         self.tsconv = nn.Sequential(
-            nn.Conv2d(1, 40, (1, 25), stride=(1, 1)),
-            nn.AvgPool2d((1, 51), (1, 5)),
+            # 先得到分别各个c_eeg通道的潜在特征
+            nn.Conv2d(1, 40, (1, 25), stride=(1, 1)),   # x (batch_size, emb_size, c_eeg, 226)
+            nn.AvgPool2d((1, 51), (1, 5)),  # x (batch_size, emb_size, c_eeg, 36)
             nn.BatchNorm2d(40),
             nn.ELU(),
+            # 再逐潜在特征得到每个通道的特征
             nn.Conv2d(40, 40, (63, 1), stride=(1, 1)),
             nn.BatchNorm2d(40),
             nn.ELU(),
@@ -118,18 +121,19 @@ class PatchEmbedding(nn.Module):
         )
 
         self.projection = nn.Sequential(
-            nn.Conv2d(40, emb_size, (1, 1), stride=(1, 1)),  
-            Rearrange('b e (h) (w) -> b (h w) e'),
+            nn.Conv2d(40, emb_size, (1, 1), stride=(1, 1)),     # x (batch_size, 40, 1, 36)
+            Rearrange('b e (h) (w) -> b (h w) e'),      # x (batch_size, 36, 40)
         )
+
+        self.print_flag = False
+        self.emb_size = emb_size
 
     def forward(self, x: Tensor) -> Tensor:
         # b, _, _, _ = x.shape
-        x = x.unsqueeze(1)     
-        # print("x", x.shape)   
-        x = self.tsconv(x)
-        # print("tsconv", x.shape)   
-        x = self.projection(x)
-        # print("projection", x.shape)  
+        x = x.unsqueeze(1)     # x (batch_size, 1, c_eeg, d_model)
+        x = self.tsconv(x)      # x (batch_size, 40, 1, 36)
+        x = self.projection(x)      # x (batch_size, 36, 40)
+
         return x
 
 class ResidualAdd(nn.Module):
@@ -154,7 +158,7 @@ class FlattenHead(nn.Sequential):
 class Enc_eeg(nn.Sequential):
     def __init__(self, emb_size=40, **kwargs):
         super().__init__(
-            PatchEmbedding(emb_size),
+            PatchEmbedding(emb_size),   # x (batch_size, 36, emb_size)
             FlattenHead()
         )
 
@@ -181,10 +185,14 @@ class ATMS(nn.Module):
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.loss_func = ClipLoss()
 
+        self.print_flag = False
+
     def forward(self, x, subject_ids):
-        x = self.encoder(x, None, subject_ids)
-        # print(f'After attention shape: {x.shape}')
-        # print("x", x.shape)
+        x = self.encoder(x, None, subject_ids)      # x (batch_size, c_eeg, d_model)
+        # if not self.print_flag:
+        #     print(f'After attention shape: {x.shape}')
+        #     print("x", x.shape)
+        #     self.print_flag = True
         # x = self.subject_wise_linear[0](x)
         # print(f'After subject-specific linear transformation shape: {x.shape}')
         eeg_embedding = self.enc_eeg(x)
