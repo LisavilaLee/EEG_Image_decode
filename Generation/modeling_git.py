@@ -41,6 +41,12 @@ from transformers.pytorch_utils import apply_chunking_to_forward, find_pruneable
 from transformers.utils import add_start_docstrings, add_start_docstrings_to_model_forward, logging, replace_return_docstrings
 from transformers.models.git.configuration_git import GitConfig, GitVisionConfig
 
+from ATMS_args import get_parser
+
+parser = get_parser()
+args = parser.parse_args()
+
+my_device = torch.device(args.gpu if torch.cuda.is_available() else "cpu")
 
 logger = logging.get_logger(__name__)
 
@@ -252,7 +258,7 @@ class GitSelfAttention(nn.Module):
                 # for idx in range(attention_mask.shape[3]):
                 #     print(attention_mask[0, 0, 256, idx])
                 # 打印出来attention_mask的dim 3 要么为0要么为-inf，最后dim 3 最后一列全为0
-                zeros = torch.zeros([1, 1, 257, 1], device='cuda:1')
+                zeros = torch.zeros([1, 1, 257, 1], device=my_device)
                 attention_mask = torch.cat([attention_mask, zeros], dim=-1)
             attention_scores = attention_scores + attention_mask
 
@@ -2037,7 +2043,7 @@ class GitModelClipEmb(GitPreTrainedModel):
             # print(f"tgt_len: {input_shape[-1]}")
             if attention_mask.shape[1] > 1:
                 # print(f"modify attention_mask in GitModelClipEmb from [[1, 1]] to [[1]].")
-                attention_mask = torch.tensor([[1]], device='cuda:1')
+                attention_mask = torch.tensor([[1]], device=my_device)
             expanded_attn_mask = _expand_mask(attention_mask, embedding_output.dtype, tgt_len=input_shape[-1]).to(
                 embedding_output.device
             )

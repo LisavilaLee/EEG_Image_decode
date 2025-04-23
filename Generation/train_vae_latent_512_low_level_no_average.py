@@ -1,4 +1,9 @@
 import os
+import argparse
+from low_level_args import get_parser
+
+parser = get_parser()
+args = parser.parse_args()
 
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com/"
 os.environ["WANDB_API_KEY"] = "KEY"
@@ -15,25 +20,21 @@ from util import wandb_logger
 
 from diffusers.pipelines.stable_diffusion_xl.pipeline_stable_diffusion_xl import *
 import torch.optim.lr_scheduler as lr_scheduler
-import argparse
 import datetime
 import itertools
 import csv
 
-
+# VAE
 image_processor = VaeImageProcessor()
-
-device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
 
 path_sdxl = "/userhome2/liweile/EEG_Image_decode/sdxl_turbo/"
 pipe = DiffusionPipeline.from_pretrained(path_sdxl, torch_dtype=torch.float, variant="fp16")
-
 
 if hasattr(pipe, 'vae'):
     for param in pipe.vae.parameters():
         param.requires_grad = False
 
-vae = pipe.vae.to(device)
+vae = pipe.vae.to(args.gpu)
 vae.requires_grad_(False)
 vae.eval()
 
@@ -161,10 +162,7 @@ def evaluate_model(eegmodel, imgmodel, dataloader, device, text_features_all, im
     mae_loss_fn = nn.L1Loss()
     accuracy = 0
     top5_acc = 0
-    
-    epoch_save_dir = os.path.join(save_dir, f'epoch_{epoch}')
-    if not os.path.exists(epoch_save_dir):
-        os.makedirs(epoch_save_dir)
+
     with torch.no_grad():
         for batch_idx, (eeg_data, labels, text, text_features, img, img_features) in enumerate(dataloader):
             eeg_data = eeg_data.to(device)
@@ -176,17 +174,21 @@ def evaluate_model(eegmodel, imgmodel, dataloader, device, text_features_all, im
             total_loss += regress_loss.item()
 
             if epoch % 10 ==0:
-                x_rec = vae.decode(eeg_features).sample
+                epoch_save_dir = os.path.join(save_dir, f'epoch_{epoch}')
+                if not os.path.exists(epoch_save_dir):
+                    os.makedirs(epoch_save_dir)
+                z = eeg_features
+                x_rec = vae.decode(z).sample
                 image_rec = image_processor.postprocess(x_rec, output_type='pil')
 
                 # Use label to create a unique file name
                 for i, label in enumerate(labels.tolist()):
-                    base_save_path = os.path.join(epoch_save_dir, f"reconstructed_image_{label}_0.png")
+                    base_save_path = os.path.join(epoch_save_dir, f"reconstructed_image_{label+1}.png")
                     save_path = base_save_path
                     k = 0
                     # Check if the file already exists
                     while os.path.exists(save_path):
-                        save_path = os.path.join(epoch_save_dir, f"reconstructed_image_{label}_{k}.png")
+                        save_path = os.path.join(epoch_save_dir, f"reconstructed_image_{label+1}_{k}.png")
                         k += 1
                     # Save the image
                     image_rec[i].save(save_path)
@@ -279,33 +281,8 @@ def main_train_loop(sub, current_time, eeg_model, img_model, train_dataloader, t
     return results
 
 def main():
-    # Argument parser setup
-    parser = argparse.ArgumentParser(description='EEG Model Training Script')
-    parser.add_argument('--data_path', type=str, default='/userhome2/liweile/EEG_Image_decode/THINGS/Preprocessed_data_250Hz', help='Path to data')
-    parser.add_argument('--output_dir', type=str, default='./outputs/contrast', help='Directory to save output results')
-    parser.add_argument('--project', type=str, default='train_pos_img_text_rep', help='Project name for logging')
-    parser.add_argument('--entity', type=str, default="sustech_rethinkingbci", help='WandB entity name')
-    parser.add_argument('--name', type=str, default="lr=3e-4_img_pos_pro_eeg", help='Experiment name')
-    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
-    parser.add_argument('--epochs', type=int, default=200, help='Number of training epochs')
-    parser.add_argument('--batch_size', type=int, default=16, help='Batch size for training')
-    parser.add_argument('--insubject', default=True, help='Flag to indicate within-subject training')
-    parser.add_argument('--encoder_type', type=str, default='encoder_low_level', 
-                        choices=['EEGNetv4_Encoder', 'ATCNet_Encoder', 'EEGConformer_Encoder', 'EEGITNet_Encoder', 'ShallowFBCSPNet_Encoder', 'encoder_low_level'], 
-                        help='Encoder type')
-    parser.add_argument('--img_encoder', type=str, default='Proj_img', help='Image encoder type')
-    parser.add_argument('--logger', default=True, help='Enable logging')
-    parser.add_argument('--gpu', type=str, default='cuda:1', help='GPU device to use')
-    parser.add_argument('--device', type=str, choices=['cpu', 'gpu'], default='gpu', help='Device to run on (cpu or gpu)')
-    parser.add_argument('--subjects', nargs='+', default=['sub-01'], help='List of subject IDs')
-    
-    args = parser.parse_args()
-
     # Set device based on the argument
-    if args.device == 'gpu' and torch.cuda.is_available():
-        device = torch.device(args.gpu)
-    else:
-        device = torch.device('cpu')
+    device = torch.device(args.gpu if torch.cuda.is_available() else "cpu")
 
     data_path = args.data_path
     subjects = args.subjects

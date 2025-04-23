@@ -12,10 +12,16 @@ import os
 import datetime
 from tqdm import tqdm
 
+from low_level_args import get_parser
+
 os.environ["HF_ENDPOINT"] = "https://hf-mirror.com/"
 cuda_device_count = torch.cuda.device_count()
 print(cuda_device_count)
-device = "cuda:1" if torch.cuda.is_available() else "cpu"
+
+parser = get_parser()
+args = parser.parse_args()
+
+device = args.gpu if torch.cuda.is_available() else "cpu"
 
 import clip
 vlmodel, preprocess = clip.load("ViT-B/32", device=device)  # /userhome2/liweile/.cache/clip
@@ -309,7 +315,7 @@ class EEGDataset():
 
             with torch.no_grad():
                 batch_image_features = vlmodel.encode_image(image_inputs)
-                batch_image_features /= batch_image_features.norm(dim=-1, keepdim=True)
+                # batch_image_features /= batch_image_features.norm(dim=-1, keepdim=True)
 
             image_features_list.append(batch_image_features)
 

@@ -7,6 +7,13 @@ import time
 from torch import inf
 import wandb
 
+from ATMS_args import get_parser
+
+parser = get_parser()
+args = parser.parse_args()
+
+my_device = torch.device(args.gpu if torch.cuda.is_available() else "cpu")
+
 class NativeScaler:
     state_dict_key = "amp_scaler"
 
@@ -108,7 +115,7 @@ def train_one_epoch(model, data_loader, optimizer, device, epoch,
 
         total_loss.append(loss_value)
         total_cor.append(cor)
-        if device == torch.device('cuda:1'):
+        if device == my_device:
             lr = optimizer.param_groups[0]["lr"]
             print('train_loss_step:', np.mean(total_loss), 'lr:', lr, 'cor', np.mean(total_cor))
 

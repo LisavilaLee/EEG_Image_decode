@@ -20,7 +20,12 @@ cuda_device_count = torch.cuda.device_count()
 
 # print(cuda_device_count)
 
-device = "cuda:1" if torch.cuda.is_available() else "cpu"
+from ATMS_args import get_parser
+
+parser = get_parser()
+args = parser.parse_args()
+
+device = torch.device(args.gpu) if torch.cuda.is_available() else "cpu"
 
 model_type = 'ViT-H-14'
 import open_clip
